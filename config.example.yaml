@@ -1,0 +1,3 @@
+target_service: "http://IP:PORT"
+intercept_paths:
+  - "/api/search"
