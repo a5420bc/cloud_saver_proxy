@@ -4,7 +4,6 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
 import httpx
 from index.api.yunso import YunsoSearch
-from index.render_spider.panyq import PanyqSearch
 from index.api.aipan import AipanSearch
 
 from contextlib import asynccontextmanager
