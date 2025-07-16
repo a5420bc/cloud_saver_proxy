@@ -3,6 +3,10 @@ import json
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
 import httpx
+from httpx import Timeout
+
+# 更长的全局超时设置(300秒=5分钟)
+HTTPX_TIMEOUT = 60
 from index.api.yunso import YunsoSearch
 from index.api.aipan import AipanSearch
 
@@ -74,7 +78,7 @@ async def proxy_middleware(request: Request, call_next):
         # 并发获取原始数据和外部数据
         target_url = f"{TARGET_SERVICE}{path}?{query}" if query else f"{TARGET_SERVICE}{path}"
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=HTTPX_TIMEOUT) as client:
             # 复制请求头
             headers = dict(request.headers)
             headers.pop("host", None)
@@ -82,9 +86,12 @@ async def proxy_middleware(request: Request, call_next):
             # 并发执行
             original_task = client.get(target_url, headers=headers) if request.method == "GET" else \
                 client.post(target_url, content=await request.body(), headers=headers)
-            external_task = fetch_external_data(keyword)
-
-            original_response, external_data = await asyncio.gather(original_task, external_task)
+            external_data = []
+            if keyword != "":
+                external_task = fetch_external_data(keyword)
+                original_response, external_data = await asyncio.gather(original_task, external_task)
+            else:
+                original_response = await asyncio.gather(original_task)
 
             # 处理原始响应
             try:
@@ -96,9 +103,10 @@ async def proxy_middleware(request: Request, call_next):
             if "data" not in original_data:
                 original_data["data"] = []
 
-            for data in external_data:
-                if data != []:  # 确保数据非空
-                    original_data["data"].append(data)
+            if external_data:
+                for data in external_data:
+                    if data != []:  # 确保数据非空
+                        original_data["data"].append(data)
 
             return JSONResponse(original_data, status_code=200)
 
@@ -106,7 +114,7 @@ async def proxy_middleware(request: Request, call_next):
     target_url = f"{TARGET_SERVICE}{path}?{query}" if query else f"{TARGET_SERVICE}{path}"
 
     # 转发请求
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=HTTPX_TIMEOUT) as client:
         # 复制原始请求头
         headers = dict(request.headers)
         headers.pop("host", None)
