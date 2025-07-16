@@ -86,12 +86,14 @@ async def proxy_middleware(request: Request, call_next):
             # 并发执行
             original_task = client.get(target_url, headers=headers) if request.method == "GET" else \
                 client.post(target_url, content=await request.body(), headers=headers)
-            external_data = []
-            if keyword != "":
-                external_task = fetch_external_data(keyword)
-                original_response, external_data = await asyncio.gather(original_task, external_task)
-            else:
-                original_response = await asyncio.gather(original_task)
+            # 根据keyword决定是否获取外部数据
+            tasks = [original_task]
+            if keyword:
+                tasks.append(fetch_external_data(keyword))
+            
+            results = await asyncio.gather(*tasks)
+            original_response = results[0]
+            external_data = results[1] if len(results) > 1 else []
 
             # 处理原始响应
             try:
