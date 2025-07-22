@@ -10,7 +10,19 @@ from fastapi.responses import JSONResponse, Response
 import httpx
 from httpx import Timeout
 from index.base import BaseSearch
+import time
+import logging
 
+# 配置日志
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+# 限制第三方库的日志级别
+logging.getLogger('httpx').setLevel(logging.WARNING)
+logging.getLogger('httpcore').setLevel(logging.WARNING)
+logging.getLogger('urllib3').setLevel(logging.WARNING)
+logger = logging.getLogger(__name__)
 # 加载配置文件
 with open(Path(__file__).parent.parent / "config.yaml") as f:
     config = yaml.safe_load(f)
@@ -118,11 +130,12 @@ async def fetch_external_data(keyword: str):
     for name, plugin in plugin_manager.search_plugins.items():
         if not plugin['enabled']:
             continue
-            
         if name == 'aipan':
             # 特殊处理aipan的多个实例
             search_tasks.extend(
-                asyncio.to_thread(search.search, keyword)
+                asyncio.to_thread(
+                    lambda s=search, n=name: (f"{n}_{s.source_id}", time.time(), s.search(keyword))
+                )
                 for search in plugin_manager.plugin_instances[name]
             )
             pass
@@ -130,19 +143,47 @@ async def fetch_external_data(keyword: str):
             search_inst = plugin_manager.plugin_instances.get(name)
             if search_inst:
                 search_tasks.append(
-                    asyncio.to_thread(search_inst.search, keyword)
+                    asyncio.to_thread(
+                        lambda s=search_inst, n=name: (n, time.time(), s.search(keyword))
+                    )
                 )
     
     # 执行并发搜索
     search_results = await asyncio.gather(*search_tasks, return_exceptions=True)
     
-    # 过滤并合并有效结果
-    return [
-        result for result in search_results
-        if not isinstance(result, Exception)
-        and result
-        and result.get("list")
-    ]
+    # 过滤有效结果并记录耗时
+    valid_results = []
+    time_records = []
+    
+    for result in search_results:
+        if isinstance(result, Exception):
+            logger.error(f"搜索任务失败: {str(result)}")
+            continue
+        if not result or not isinstance(result, tuple) or len(result) != 3:
+            continue
+        name, start_time, data = result
+        if not data or not data.get("list"):
+            continue
+        valid_results.append(data)
+        elapsed = time.time() - start_time
+        time_records.append((name, elapsed))
+        logger.debug(f"接口[{name}] 耗时: {elapsed:.3f}秒")
+    
+    # 输出统计信息
+    if time_records:
+        names, times = zip(*time_records)
+        total_time = sum(times)
+        avg_time = total_time / len(time_records)
+        min_time = min(time_records, key=lambda x: x[1])
+        max_time = max(time_records, key=lambda x: x[1])
+        logger.debug(f"接口调用统计:")
+        logger.debug(f"总调用次数: {len(time_records)}")
+        logger.debug(f"总耗时: {total_time:.3f}秒")
+        logger.debug(f"平均耗时: {avg_time:.3f}秒")
+        logger.debug(f"最快接口: [{min_time[0]}] {min_time[1]:.3f}秒")
+        logger.debug(f"最慢接口: [{max_time[0]}] {max_time[1]:.3f}秒")
+    
+    return valid_results
 
 
 @app.middleware("http")

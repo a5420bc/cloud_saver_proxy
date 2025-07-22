@@ -190,10 +190,11 @@ class BuyutuSearch(BaseSearch):
 
     def _search_with_api(self, keyword: str) -> List[Dict[str, Any]]:
         """通过API搜索"""
-        # Base64编码关键词
-        encoded_keyword = base64.b64encode(keyword.encode('utf-8')).decode('utf-8')
+        # 先base64编码，再URL编码
+        from urllib.parse import quote
+        base64_keyword = base64.b64encode(keyword.encode('utf-8')).decode('utf-8')
+        encoded_keyword = quote(base64_keyword)
         url = f"https://buyutu.com/s/{encoded_keyword}"
-
         try:
             # 获取搜索结果页
             response = requests.get(
@@ -205,7 +206,7 @@ class BuyutuSearch(BaseSearch):
                     'cache-control': 'no-cache',
                     'pragma': 'no-cache',
                     'priority': 'u=0, i',
-                    'referer': 'https://buyutu.com/',
+                    'referer': url,  # 使用当前URL作为referer
                     'sec-ch-ua': '"Not)A;Brand";v="8", "Chromium";v="138", "Google Chrome";v="138"',
                     'sec-ch-ua-mobile': '?0',
                     'sec-ch-ua-platform': '"macOS"',
@@ -214,7 +215,8 @@ class BuyutuSearch(BaseSearch):
                     'sec-fetch-site': 'same-origin',
                     'sec-fetch-user': '?1',
                     'upgrade-insecure-requests': '1',
-                    'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36'
+                    'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
+                    'origin': 'https://buyutu.com'
                 }
             )
             response.raise_for_status()
