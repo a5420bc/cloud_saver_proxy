@@ -117,7 +117,7 @@ class EsouaSearch(BaseSearch):
                     "image": "",
                     "cloudLinks": [{
                         "link": resource_link['href'],
-                        "cloudType": self._map_cloud_type(cloud_type)
+                        "cloudType": self.detect_cloud_type(resource_link['href'])
                     }],
                     "tags": [],
                     "magnetLink": "",

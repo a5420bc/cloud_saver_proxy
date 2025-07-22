@@ -75,7 +75,7 @@ class AipanSearch(BaseSearch):
                     "image": "",
                     "cloudLinks": [{
                         "link": link["link"],
-                        "cloudType": "quark" if "quark" in link["link"] else "tianyi",
+                        "cloudType": self.detect_cloud_type(link["link"]),
                         "password": link.get("pwd", "")
                     } for link in item["links"]
                        if "quark" in link["link"] or "189.cn" in link["link"]],

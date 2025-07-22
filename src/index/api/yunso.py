@@ -50,7 +50,7 @@ class YunsoSearch(BaseSearch):
                     "image": "",
                     "cloudLinks": [{
                         "link": item.get("Scrurl", ""),
-                        "cloudType": "quark"
+                        "cloudType": self.detect_cloud_type(item.get("Scrurl", ""))
                     }],
                     "tags": [
                     ],

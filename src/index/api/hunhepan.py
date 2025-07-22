@@ -76,7 +76,7 @@ class HunhepanSearch(BaseSearch):
                     "image": "",
                     "cloudLinks": [{
                         "link": item.get("link", ""),
-                        "cloudType": self._map_cloud_type(item.get("disk_type", ""))
+                        "cloudType": self.detect_cloud_type(item.get("link", ""))
                     }],
                     "tags": [],
                     "magnetLink": "",

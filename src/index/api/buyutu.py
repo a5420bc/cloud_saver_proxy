@@ -288,7 +288,7 @@ class BuyutuSearch(BaseSearch):
                         "uploader": user_info,
                         "cloudLinks": [{
                             "link":real_link,
-                            "cloudType": cloud_type
+                            "cloudType": self.detect_cloud_type(real_link)
                         }],
                         "tags": [],
                         "magnetLink": "",
