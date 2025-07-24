@@ -200,9 +200,13 @@ async def proxy_middleware(request: Request, call_next):
 
     if any(path.startswith(p) for p in INTERCEPT_PATHS):
         # 从查询参数获取keyword
+        import urllib.parse
         query_params = dict(request.query_params)
         keyword = query_params.get("keyword", "")
-
+        # keyword以#结尾时，原始请求keyword也去除#
+        if keyword and keyword.endswith("#"):
+            query_params["keyword"] = keyword[:-1]
+            query = urllib.parse.urlencode(query_params)
         # 并发获取原始数据和外部数据
         target_url = f"{TARGET_SERVICE}{path}?{query}" if query else f"{TARGET_SERVICE}{path}"
 
@@ -217,7 +221,7 @@ async def proxy_middleware(request: Request, call_next):
             # 根据keyword决定是否获取外部数据
             tasks = [original_task]
             if keyword and keyword.endswith("#"):
-                tasks.append(fetch_external_data(keyword))
+                tasks.append(fetch_external_data(keyword[:-1]))
 
             results = await asyncio.gather(*tasks)
             original_response = results[0]
