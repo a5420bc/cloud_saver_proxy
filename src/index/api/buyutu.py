@@ -90,6 +90,7 @@ class BuyutuSearch(BaseSearch):
             
             encrypted_data = soup.find('input', {'id': 'encryptedData'})
             if not encrypted_data or 'value' not in encrypted_data.attrs:
+                print(f"[DEBUG] buyutu _get_real_link: 未找到加密数据 detail_url={detail_url} page_url={page_url}")
                 return ""
 
             # 优先使用缓存密钥
@@ -104,11 +105,13 @@ class BuyutuSearch(BaseSearch):
             # 提取加密数据
             encrypted_data = soup.find('input', {'id': 'encryptedData'})
             if not encrypted_data or 'value' not in encrypted_data.attrs:
+                print(f"[DEBUG] buyutu _get_real_link: 再次未找到加密数据 detail_url={detail_url} page_url={page_url}")
                 return ""
                 
             # 从页面中提取detail.js路径
             detail_js = soup.find('script', {'src': lambda x: x and 'detail.js' in x})
             if not detail_js:
+                print(f"[DEBUG] buyutu _get_real_link: 未找到detail.js detail_url={detail_url} page_url={page_url}")
                 return ""
                 
             detail_js_path = detail_js['src']
@@ -185,7 +188,7 @@ class BuyutuSearch(BaseSearch):
                 if os.path.exists(output_path):
                     os.unlink(output_path)
         except Exception as e:
-            print(f"获取真实链接失败: {str(e)}")
+            print(f"[DEBUG] buyutu _get_real_link: 获取真实链接失败 detail_url={detail_url} page_url={page_url} error={str(e)}")
             return ""
 
     def _search_with_api(self, keyword: str) -> List[Dict[str, Any]]:
@@ -253,19 +256,6 @@ class BuyutuSearch(BaseSearch):
                         if 'txt.png' in title_img['src']:
                             file_type = 'txt'
                     
-                    # 提取网盘类型
-                    cloud_img = cloud_span.find('img')
-                    cloud_type = 'unknown'
-                    if cloud_img and 'src' in cloud_img.attrs:
-                        if 'quark.png' in cloud_img['src']:
-                            cloud_type = 'quark'
-                        elif 'alipan.png' in cloud_img['src']:
-                            cloud_type = 'alipan'
-                        elif 'xunlei.png' in cloud_img['src']:
-                            cloud_type = 'xunlei'
-                        elif 'baidu.png' in cloud_img['src']:
-                            cloud_type = 'baidu'
-                    
                     # 提取发布日期
                     pub_date = "1970-01-01T00:00:00+00:00"
                     if date_span and date_span.text.strip():
@@ -278,7 +268,10 @@ class BuyutuSearch(BaseSearch):
                     # 获取真实链接
                     detail_url = f"https://buyutu.com{title_link['href'].replace('../', '/')}"
                     real_link = self._get_real_link(detail_url, url)
-                    
+                    if not real_link:
+                        print(f"[DEBUG] buyutu _search_with_api: real_link为空，跳过该资源 detail_url={detail_url}")
+                        continue
+
                     results.append({
                         "messageId": title_link['href'].split('/')[-1].replace('.html', ''),
                         "title": title_link.get('title', '').strip(),
