@@ -28,27 +28,7 @@ class PanwsSearch(BaseSearch):
             '__51uvsct__3JWrr1aVig0T1isI': '4'
         }
 
-    def _detect_cloud_type(self, url: str) -> str:
-        """根据URL检测云盘类型"""
-        if not url:
-            return ""
-        if 'pan.baidu.com' in url or 'yun.baidu.com' in url:
-            return "baiduPan"
-        elif 'cloud.189.cn' in url:
-            return "tianyi"
-        elif 'aliyundrive.com' in url or 'alipan.com' in url:
-            return "aliyun"
-        elif '115.com' in url or 'anxia.com' in url or '115cdn.com' in url:
-            return "pan115"
-        elif '123' in url and '.com/s/' in url:
-            return "pan123"
-        elif 'pan.quark.cn' in url:
-            return "quark"
-        elif 'caiyun.139.com' in url:
-            return "yidong"
-        elif 'drive.uc.cn' in url:
-            return "uc"
-        return ""
+    # 云盘类型识别统一用父类方法
 
     def search(self, keyword: str, page: int = 1) -> Dict[str, Any]:
         """
@@ -78,10 +58,20 @@ class PanwsSearch(BaseSearch):
             for item in results:
                 link = item.get("link", "")
                 list_data.append({
-                    "name": item.get("name", ""),
-                    "link": link,
-                    "category": item.get("category", ""),
-                    "cloudType": self.detect_cloud_type(link)
+                    "messageId": link,
+                    "title": item.get("name", ""),
+                    "pubDate": "",
+                    "content": item.get("name", ""),
+                    "fileType": "dir",
+                    "uploader": "",
+                    "cloudLinks": [{
+                        "link": link,
+                        "cloudType": self.detect_cloud_type(link)
+                    }],
+                    "tags": [],
+                    "magnetLink": "",
+                    "channel": "panws",
+                    "channelId": "panws"
                 })
             return {
                 "list": list_data,
@@ -91,8 +81,10 @@ class PanwsSearch(BaseSearch):
                     "index": 1010,
                     "channelLogo": ""
                 },
-                "id": "panws",
-                "index": 1010
+                "id": "panws_search",
+                "index": 1010,
+                "total": data.get("totalResults", len(results)),
+                "keyword": keyword
             }
         except Exception as e:
             print(f"API请求失败: {str(e)}")
