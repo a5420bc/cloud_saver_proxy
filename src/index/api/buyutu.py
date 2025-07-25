@@ -300,8 +300,8 @@ class BuyutuSearch(BaseSearch):
                     "index": 1001,
                     "channelLogo": ""
                 },
-                "id": "buyutu_search",
-                "index": 15,
+                "id": "buyutu",
+                "index": 1001,
                 "total": len(results),
                 "keyword": keyword
             }

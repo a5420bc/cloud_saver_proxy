@@ -42,7 +42,7 @@ class PluginManager:
         self.search_plugins: Dict[str, Dict] = {}
 
     def discover_plugins(self, disabled_plugins: list = None):
-        """自动发现api目录下的搜索插件"""
+        """自动发现api目录下的搜索插件，支持vde51/taiqiongle双实例"""
         disabled_plugins = disabled_plugins or []
         api_path = Path(__file__).parent / "index" / "api"
         print(f"搜索插件目录: {api_path}")
@@ -63,14 +63,27 @@ class PluginManager:
                             issubclass(cls, BaseSearch) and
                                 cls != BaseSearch):
                             print(f"找到搜索插件类: {cls.__name__}")
-                            if name in disabled_plugins:
-                                print(f"插件 {name} 被禁用")
-                                continue
-                            self.search_plugins[name] = {
-                                'cls': cls,
-                                'enabled': name not in disabled_plugins
-                            }
-                            print(f"成功注册插件: {name}")
+                            if name == "vde51":
+                                # 注册vde51和taiqiongle两个实例
+                                for site_key in ["vde51", "taiqiongle"]:
+                                    if site_key in disabled_plugins:
+                                        print(f"插件 {site_key} 被禁用")
+                                        continue
+                                    self.search_plugins[site_key] = {
+                                        'cls': cls,
+                                        'enabled': site_key not in disabled_plugins,
+                                        'site': "51vde" if site_key == "vde51" else "taiqiongle"
+                                    }
+                                    print(f"成功注册插件: {site_key}")
+                            else:
+                                if name in disabled_plugins:
+                                    print(f"插件 {name} 被禁用")
+                                    continue
+                                self.search_plugins[name] = {
+                                    'cls': cls,
+                                    'enabled': name not in disabled_plugins
+                                }
+                                print(f"成功注册插件: {name}")
                     except Exception as e:
                         print(f"检查类 {attr} 时出错: {str(e)}")
                         continue
@@ -92,6 +105,9 @@ class PluginManager:
                     cls(source_id=i) for i in range(1, 9)]
                 # 仅aipan需要挂载到app.state
                 app.state.aipan_searches = self.plugin_instances[name]
+            elif name in ['vde51', 'taiqiongle']:
+                # 分别初始化site参数
+                self.plugin_instances[name] = cls(site=plugin.get('site', '51vde'))
             else:
                 self.plugin_instances[name] = cls()
 

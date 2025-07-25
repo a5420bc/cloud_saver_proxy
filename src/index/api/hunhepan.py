@@ -89,7 +89,7 @@ class HunhepanSearch(BaseSearch):
                     "index": 1004,
                     "channelLogo": ""
                 },
-                "id": "hunhepan_search",
+                "id": "hunhepan",
                 "index": 1004
             }
 

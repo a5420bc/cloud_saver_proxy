@@ -81,7 +81,7 @@ class PanwsSearch(BaseSearch):
                     "index": 1010,
                     "channelLogo": ""
                 },
-                "id": "panws_search",
+                "id": "panws",
                 "index": 1010,
                 "total": data.get("totalResults", len(results)),
                 "keyword": keyword

@@ -4,26 +4,63 @@ import re
 from typing import List, Dict, Any
 
 class Vde51Search(BaseSearch):
-    """51vde网盘搜索实现"""
-    def __init__(self, use_playwright: bool = False):
+    """
+    51vde/太穹乐盘网盘搜索实现，可扩展多站点
+    site: "51vde" 或 "taiqiongle"
+    """
+    def __init__(self, use_playwright: bool = False, site: str = "51vde"):
         self.use_playwright = use_playwright
-        self.base_url = "https://51vde.com/api/discussions"
-        self.headers = {
-            'accept': '*/*',
-            'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8,zh-TW;q=0.7',
-            'cache-control': 'no-cache',
-            'pragma': 'no-cache',
-            'priority': 'u=1, i',
-            'referer': 'https://51vde.com/',
-            'sec-ch-ua': '"Not)A;Brand";v="8", "Chromium";v="138", "Google Chrome";v="138"',
-            'sec-ch-ua-mobile': '?0',
-            'sec-ch-ua-platform': '"macOS"',
-            'sec-fetch-dest': 'empty',
-            'sec-fetch-mode': 'cors',
-            'sec-fetch-site': 'same-origin',
-            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
-            'x-csrf-token': 'RvwUaWMJCmP7W0coeHtdAchKNJzfEpihHIGIYBXs'
+        # 站点配置
+        site_cfg = {
+            "51vde": {
+                "base_url": "https://51vde.com/api/discussions",
+                "headers": {
+                    'accept': '*/*',
+                    'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8,zh-TW;q=0.7',
+                    'cache-control': 'no-cache',
+                    'pragma': 'no-cache',
+                    'priority': 'u=1, i',
+                    'referer': 'https://51vde.com/',
+                    'sec-ch-ua': '"Not)A;Brand";v="8", "Chromium";v="138", "Google Chrome";v="138"',
+                    'sec-ch-ua-mobile': '?0',
+                    'sec-ch-ua-platform': '"macOS"',
+                    'sec-fetch-dest': 'empty',
+                    'sec-fetch-mode': 'cors',
+                    'sec-fetch-site': 'same-origin',
+                    'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
+                    'x-csrf-token': 'RvwUaWMJCmP7W0coeHtdAchKNJzfEpihHIGIYBXs'
+                },
+                "cookies": None
+            },
+            "taiqiongle": {
+                "base_url": "https://www.taiqiongle.com/api/discussions",
+                "headers": {
+                    'accept': '*/*',
+                    'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8,zh-TW;q=0.7',
+                    'priority': 'u=1, i',
+                    'referer': 'https://www.taiqiongle.com/?q=%E6%89%AB%E6%AF%92%E9%A3%8E%E6%9A%B4%20',
+                    'sec-ch-ua': '"Not)A;Brand";v="8", "Chromium";v="138", "Google Chrome";v="138"',
+                    'sec-ch-ua-mobile': '?0',
+                    'sec-ch-ua-platform': '"macOS"',
+                    'sec-fetch-dest': 'empty',
+                    'sec-fetch-mode': 'cors',
+                    'sec-fetch-site': 'same-origin',
+                    'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
+                    'x-csrf-token': 'IwMQuX3UdFLi91gWVBfWdwAmx9ETQou26qk1lTaA'
+                },
+                "cookies": {
+                    "flarum_session": "WM7cSH2jhAKkGmhotGbR1Jvi4vkLnIIjLTfl8B9Y",
+                    "_ga": "GA1.1.295149817.1753356828",
+                    "_ga_BC2CBCSF5X": "GS2.1.s1753356827$o1$g1$t1753357994$j50$l0$h0"
+                }
+            }
         }
+        if site not in site_cfg:
+            raise ValueError(f"不支持的site: {site}")
+        self.site = site
+        self.base_url = site_cfg[site]["base_url"]
+        self.headers = site_cfg[site]["headers"]
+        self.cookies = site_cfg[site]["cookies"]
 
     def search(self, keyword: str) -> List[Dict[str, Any]]:
         """搜索51vde资源并返回结构化结果
@@ -44,7 +81,7 @@ class Vde51Search(BaseSearch):
                 self.base_url,
                 headers=self.headers,
                 params=params,
-                timeout=10
+                timeout=15
             )
             response.raise_for_status()
             data = response.json()
@@ -115,28 +152,3 @@ class Vde51Search(BaseSearch):
         except Exception as e:
             print(f"帖子处理失败: {str(e)}")
             return None
-
-    def _detect_cloud_type(self, url: str) -> str:
-        """根据URL检测云盘类型
-        
-        Args:
-            url: 资源链接
-            
-        Returns:
-            标准化的云盘类型标识
-        """
-        if 'pan.baidu.com' in url or 'yun.baidu.com' in url:
-            return "baiduPan"
-        elif 'cloud.189.cn' in url:
-            return "tianyi"
-        elif 'aliyundrive.com' in url or 'alipan.com' in url:
-            return "aliyun"
-        elif '115.com' in url or 'anxia.com' in url or '115cdn.com' in url:
-            return "pan115"
-        elif '123' in url and '.com/s/' in url:
-            return "pan123"
-        elif 'pan.quark.cn' in url:
-            return "quark"
-        elif 'caiyun.139.com' in url:
-            return "yidong"
-        return ""

@@ -64,8 +64,8 @@ class YunsoSearch(BaseSearch):
                     "index": 1000,
                     "channelLogo": ""
                 },
-                "id": "test",
-                "index": 14
+                "id": "yunso",
+                "index": 1000
             }
 
         except Exception as e:
