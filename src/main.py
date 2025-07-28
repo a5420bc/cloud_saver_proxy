@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Dict, Type
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
+from resource.bangumi import Bangumi
 import httpx
 from httpx import Timeout
 from index.base import BaseSearch
@@ -107,7 +108,8 @@ class PluginManager:
                 app.state.aipan_searches = self.plugin_instances[name]
             elif name in ['vde51', 'taiqiongle']:
                 # 分别初始化site参数
-                self.plugin_instances[name] = cls(site=plugin.get('site', '51vde'))
+                self.plugin_instances[name] = cls(
+                    site=plugin.get('site', '51vde'))
             else:
                 self.plugin_instances[name] = cls()
 
@@ -213,6 +215,52 @@ async def fetch_external_data(keyword: str):
 async def proxy_middleware(request: Request, call_next):
     path = request.url.path
     query = str(request.url.query)
+
+    # 新增：拦截 /api/douban/hot 且 category=bangumi，直接返回指定结果
+    if path == "/api/douban/hot":
+        import urllib.parse
+        query_params = dict(request.query_params)
+        if query_params.get("category") == "bangumi":
+            ret = Bangumi().get_bangumi_calendar()
+            return JSONResponse(
+                ret,
+                status_code=200
+            )
+
+    # 新增：拦截 /assets/douban-xxxx.js，转发并在数组末尾插入 Bangumi 分类
+    import re
+    if re.fullmatch(r"/assets/douban-[\w\-]+\.js", path):
+        target_url = f"{TARGET_SERVICE}{path}?{query}" if query else f"{TARGET_SERVICE}{path}"
+        async with httpx.AsyncClient(timeout=HTTPX_TIMEOUT) as client:
+            headers = dict(request.headers)
+            headers.pop("host", None)
+            resp = await client.get(target_url, headers=headers)
+            js_code = resp.text
+            # 用正则找到 const t = [ ... ];，在数组末尾插入新项
+            import re as _re
+            match = _re.search(
+                r"(const\s+t\s*=\s*\[)(.*?)(\]\s*;\s*export\s*\{\s*t\s+as\s+d\s*\}\s*;?)",
+                js_code,
+                _re.DOTALL | _re.IGNORECASE
+            )
+            if match:
+                arr_start, arr_body, arr_end = match.groups()
+                # 插入新项，注意逗号处理
+                arr_body = arr_body.rstrip()
+                if not arr_body.endswith(",") and arr_body.strip():
+                    arr_body += ","
+                arr_body += '''
+    {
+        type: "tv_animation",
+        category: "bangumi",
+        api: "tv",
+        title: "Bangumi"
+    }'''
+                new_js = f"{arr_start}{arr_body}{arr_end}"
+                print(new_js)
+                return Response(content=new_js, media_type="application/javascript")
+            # 若未匹配到，原样返回
+            return Response(content=js_code, media_type="application/javascript")
 
     if any(path.startswith(p) for p in INTERCEPT_PATHS):
         # 从查询参数获取keyword
