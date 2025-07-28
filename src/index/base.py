@@ -36,3 +36,38 @@ class BaseSearch(ABC):
         elif 'drive.uc.cn' in url:
             return "uc"
         return ""
+
+    def _clean_html(self, text):
+        """通用HTML标签清理"""
+        import re
+        return re.sub(r'<[^>]+>', '', text or '').strip()
+
+    def _extract_cloud_links_from_html(self, soup):
+        """
+        从BeautifulSoup对象中提取所有支持的云盘链接
+        :param soup: BeautifulSoup对象
+        :return: [{'link': url, 'cloudType': type}, ...]
+        """
+        links = []
+        for a in soup.find_all('a', href=True):
+            link = a['href']
+            cloud_type = self.detect_cloud_type(link)
+            if cloud_type:
+                links.append({
+                    "link": link,
+                    "cloudType": cloud_type
+                })
+        return links
+
+    def _batch_fetch_details(self, detail_items, fetch_func, max_workers=5):
+        """
+        通用并发详情页处理工具
+        :param detail_items: 详情页参数列表（如URL、dict等）
+        :param fetch_func: 单个详情页处理函数，参数为detail_items的元素
+        :param max_workers: 并发线程数
+        :return: 结果列表，顺序与detail_items一致
+        """
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            results = list(executor.map(fetch_func, detail_items))
+        return results
