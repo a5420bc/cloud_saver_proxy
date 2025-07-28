@@ -86,7 +86,7 @@ class AlipanxSearch(BaseSearch):
                     "uploader": item.get("share_user", ""),
                     "cloudLinks": [{
                         "link": link,
-                        "cloudType": self._map_cloud_type(disk_type),
+                        "cloudType": self.detect_cloud_type(link),
                         "pwd": pwd
                     }],
                     "tags": tags if isinstance(tags, list) else [],
@@ -121,9 +121,3 @@ class AlipanxSearch(BaseSearch):
                 "index": 1012
             }
         # 云盘类型映射
-    def _map_cloud_type(self, disk_type: str) -> str:
-        mapping = {
-            "QUARK": "quark",
-            "ALY": "aliyun"
-        }
-        return mapping.get((disk_type or "").upper(), (disk_type or "").lower())
