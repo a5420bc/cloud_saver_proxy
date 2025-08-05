@@ -3,18 +3,19 @@ from typing import List, Dict, Any
 
 class BaseSearch(ABC):
     """搜索基类，支持多线程调用"""
-    
+
     @abstractmethod
     def search(self, keyword: str) -> List[Dict[str, Any]]:
         """执行搜索并返回格式化结果
-        
+
         Args:
             keyword: 搜索关键词
-            
+
         Returns:
             标准化的结果列表
         """
         pass
+
     def detect_cloud_type(self, url: str) -> str:
         """根据URL判断云盘类型，所有子类统一调用"""
         if not url:
@@ -59,15 +60,63 @@ class BaseSearch(ABC):
                 })
         return links
 
-    def _batch_fetch_details(self, detail_items, fetch_func, max_workers=5):
+    def _batch_fetch_details(self, tasks, func, max_workers=8):
         """
-        通用并发详情页处理工具
-        :param detail_items: 详情页参数列表（如URL、dict等）
-        :param fetch_func: 单个详情页处理函数，参数为detail_items的元素
-        :param max_workers: 并发线程数
-        :return: 结果列表，顺序与detail_items一致
+        通用线程池批量处理工具
         """
-        from concurrent.futures import ThreadPoolExecutor
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            results = list(executor.map(fetch_func, detail_items))
-        return results
+        import concurrent.futures
+        results = [None] * len(tasks)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_idx = {executor.submit(func, task): i for i, task in enumerate(tasks)}
+            for future in concurrent.futures.as_completed(future_to_idx):
+                idx = future_to_idx[future]
+                try:
+                    result = future.result()
+                    results[idx] = result
+                except Exception as e:
+                    print(f"batch_fetch_details error: {str(e)}")
+        return [r for r in results if r]
+
+    def _resolve_json_chain(self, data, chain, match_func=None, nuxt_json=None):
+        """
+        通用链式 JSON 路径解析工具
+        :param data: 初始 JSON 数据
+        :param chain: 操作链 [("key"/"idx"/"list"/"origin"/"match", value), ...]
+        :param match_func: 可选，处理 match 类型的自定义函数，参数(data, val)
+        :param nuxt_json: 原始根节点，处理 origin 时需要
+        :return: 解析结果或 None
+        """
+        try:
+            for typ, val in chain:
+                if typ == "list":
+                    if not isinstance(data, list):
+                        return None
+                    data = data[val]
+                elif typ == "key":
+                    if not isinstance(data, dict):
+                        return None
+                    data = data[val]
+                elif typ == "idx":
+                    if isinstance(data, list) and data:
+                        data = data[val]
+                    else:
+                        return None
+                elif typ == "origin":
+                    # 严格按原实现：data = nuxt_json[data]
+                    if nuxt_json is None:
+                        return None
+                    try:
+                        data = nuxt_json[data]
+                    except Exception:
+                        return None
+                elif typ == "match":
+                    if match_func:
+                        data = match_func(data, val)
+                    else:
+                        return None
+                else:
+                    return None
+            return data
+        except Exception as e:
+            print(f"resolve_json_chain 解析失败: {str(e)}")
+            return None

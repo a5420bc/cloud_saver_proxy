@@ -5,8 +5,6 @@ from typing import Dict, Any, List
 import re
 import json
 
-
-
 class QuarksoSearch(BaseSearch):
     """
     quark.so 网页搜索实现，解析主列表页 HTML，提取 image, tags, link, title, content, pubDate
@@ -131,7 +129,7 @@ class QuarksoSearch(BaseSearch):
         except Exception as e:
             print(f"quarkso搜索失败: {str(e)}")
             return self._format_results([], keyword)
-    
+
     def save_quarkso_resource(self, url, cookie_id, doc_id):
         """
         向 https://www.quark.so/v1/local_resource_save 发起POST请求，保存资源。
@@ -209,49 +207,7 @@ class QuarksoSearch(BaseSearch):
             print(f"详情页解析失败: {str(e)}")
             return fake_link, "", None
 
-    def _resolve_json_chain(self, data, chain, match_func=None, nuxt_json=None):
-        """
-        通用链式 JSON 路径解析工具
-        :param data: 初始 JSON 数据
-        :param chain: 操作链 [("key"/"idx"/"list"/"origin"/"match", value), ...]
-        :param match_func: 可选，处理 match 类型的自定义函数，参数(data, val)
-        :param nuxt_json: 原始根节点，处理 origin 时需要
-        :return: 解析结果或 None
-        """
-        try:
-            for typ, val in chain:
-                if typ == "list":
-                    if not isinstance(data, list):
-                        return None
-                    data = data[val]
-                elif typ == "key":
-                    if not isinstance(data, dict):
-                        return None
-                    data = data[val]
-                elif typ == "idx":
-                    if isinstance(data, list) and data:
-                        data = data[val]
-                    else:
-                        return None
-                elif typ == "origin":
-                    # 严格按原实现：data = nuxt_json[data]
-                    if nuxt_json is None:
-                        return None
-                    try:
-                        data = nuxt_json[data]
-                    except Exception:
-                        return None
-                elif typ == "match":
-                    if match_func:
-                        data = match_func(data, val)
-                    else:
-                        return None
-                else:
-                    return None
-            return data
-        except Exception as e:
-            print(f"resolve_json_chain 解析失败: {str(e)}")
-            return None
+    # _resolve_json_chain 已移至父类
 
     def _resolve_cookie_id_chain(self, nuxt_json):
         """
