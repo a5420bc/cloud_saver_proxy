@@ -3,7 +3,6 @@ import requests
 import urllib.parse
 from typing import List, Dict, Any
 
-
 class YunsoSearch(BaseSearch):
     """天翼搜搜索实现"""
 
@@ -49,11 +48,13 @@ class YunsoSearch(BaseSearch):
                     "content": item.get("ScrName", ""),
                     "image": "",
                     "cloudLinks": [{
-                        "link": item.get("Scrurl", ""),
+                        "link": (
+                            item.get("Scrurl", "") + f"?pwd={item.get('Scrpass')}"
+                            if item.get("Scrpass") else item.get("Scrurl", "")
+                        ),
                         "cloudType": self.detect_cloud_type(item.get("Scrurl", ""))
                     }],
-                    "tags": [
-                    ],
+                    "tags": [],
                     "magnetLink": "",
                     "channel": "云桥计划",
                     "channelId": "yunso"

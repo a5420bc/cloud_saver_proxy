@@ -1,9 +1,10 @@
+# -*- coding: utf-8 -*-
 from ..base import BaseSearch
 import requests
 from typing import List, Dict, Any
 
 class JikepanSearch(BaseSearch):
-    """¼´¿ÌÅÌËÑË÷ÊµÏÖ"""
+    """å³åˆ»ç›˜æœç´¢å®ç°"""
 
     def __init__(self, use_playwright: bool = False):
         self.use_playwright = use_playwright
@@ -16,14 +17,14 @@ class JikepanSearch(BaseSearch):
 
     def search(self, keyword: str, is_all: bool = False) -> Dict[str, Any]:
         """
-        ËÑË÷¼´¿ÌÅÌ×ÊÔ´²¢·µ»Ø½á¹¹»¯½á¹û
+        æœç´¢å³åˆ»ç›˜èµ„æºå¹¶è¿”å›ç»“æ„åŒ–ç»“æœ
 
         Args:
-            keyword: ËÑË÷¹Ø¼ü´Ê
-            is_all: ÊÇ·ñÈ«Á¿ËÑË÷£¨Âı£¬Ô¼10Ãë£©
+            keyword: æœç´¢å…³é”®è¯
+            is_all: æ˜¯å¦å…¨é‡æœç´¢ï¼ˆæ…¢ï¼Œçº¦10ç§’ï¼‰
 
         Returns:
-            ±ê×¼»¯µÄ½á¹û×Öµä
+            æ ‡å‡†åŒ–çš„ç»“æœå­—å…¸
         """
         return self._search_with_api(keyword, is_all)
 
@@ -42,12 +43,12 @@ class JikepanSearch(BaseSearch):
             resp.raise_for_status()
             data = resp.json()
             if data.get("msg") != "success":
-                print(f"APIÇëÇóÊ§°Ü: {data.get('msg')}")
+                print(f"APIè¯·æ±‚å¤±è´¥: {data.get('msg')}")
                 return {
                     "list": [],
                     "channelInfo": {
                         "id": "jikepan",
-                        "name": "¼´¿ÌÅÌ",
+                        "name": "å³åˆ»ç›˜",
                         "index": 1020,
                         "channelLogo": ""
                     },
@@ -59,11 +60,11 @@ class JikepanSearch(BaseSearch):
             for idx, item in enumerate(data.get("list", [])):
                 links = []
                 for link in item.get("links", []):
-                    # ÓÅÏÈÓÃ»ùÀàµÄÔÆÅÌÀàĞÍ¼ì²â£¬¼ì²â²»µ½ÔòÓÃÔ­serviceÓ³Éä
+                    # ä¼˜å…ˆç”¨åŸºç±»çš„äº‘ç›˜ç±»å‹æ£€æµ‹ï¼Œæ£€æµ‹ä¸åˆ°åˆ™ç”¨åŸserviceæ˜ å°„
                     link_type = self.detect_cloud_type(link.get("link", ""))
                     if not link_type or link_type == "others":
                         fallback_type = self._convert_link_type(link.get("service", ""))
-                        # ÌØÊâ´¦ÀíotherÀàĞÍ
+                        # ç‰¹æ®Šå¤„ç†otherç±»å‹
                         if fallback_type == "others" and "drive.uc.cn" in link.get("link", "").lower():
                             fallback_type = "uc"
                         if fallback_type:
@@ -86,7 +87,7 @@ class JikepanSearch(BaseSearch):
                     "cloudLinks": links,
                     "tags": [],
                     "magnetLink": "",
-                    "channel": "¼´¿ÌÅÌ",
+                    "channel": "å³åˆ»ç›˜",
                     "channelId": "jikepan"
                 })
 
@@ -94,7 +95,7 @@ class JikepanSearch(BaseSearch):
                 "list": results,
                 "channelInfo": {
                     "id": "jikepan",
-                    "name": "¼´¿ÌÅÌ",
+                    "name": "å³åˆ»ç›˜",
                     "index": 1020,
                     "channelLogo": ""
                 },
@@ -102,12 +103,12 @@ class JikepanSearch(BaseSearch):
                 "index": 1020
             }
         except Exception as e:
-            print(f"APIÇëÇóÒì³£: {str(e)}")
+            print(f"APIè¯·æ±‚å¼‚å¸¸: {str(e)}")
             return {
                 "list": [],
                 "channelInfo": {
                     "id": "jikepan",
-                    "name": "¼´¿ÌÅÌ",
+                    "name": "å³åˆ»ç›˜",
                     "index": 1020,
                     "channelLogo": ""
                 },
