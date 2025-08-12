@@ -12,7 +12,8 @@ class HunhepanSearch(BaseSearch):
         self.api_list = [
             ("hunhepan", "https://hunhepan.com/open/search/disk", "https://hunhepan.com/search"),
             ("qkpanso", "https://qkpanso.com/v1/search/disk", "https://qkpanso.com/search"),
-            ("kuake8", "https://kuake8.com/v1/search/disk", "https://kuake8.com/search"),
+            #接口响应速度慢，默认不开启
+            #("kuake8", "https://kuake8.com/v1/search/disk", "https://kuake8.com/search"),
         ]
         self.headers_base = {
             'accept': 'application/json, text/plain, */*',
@@ -86,7 +87,7 @@ class HunhepanSearch(BaseSearch):
                     errors.append(f"{api_name} error: {str(e)}")
 
         from concurrent.futures import ThreadPoolExecutor
-        with ThreadPoolExecutor(max_workers=3) as executor:
+        with ThreadPoolExecutor(max_workers=10) as executor:
             for api_name, api_url, referer in self.api_list:
                 executor.submit(fetch_api, api_name, api_url, referer)
 
