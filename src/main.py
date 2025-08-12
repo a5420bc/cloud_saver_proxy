@@ -144,14 +144,28 @@ TARGET_SERVICE = config["target_service"]
 INTERCEPT_PATHS = config["intercept_paths"]
 
 
-async def fetch_external_data(keyword: str):
-    """从多个数据源并发获取外部数据"""
+async def fetch_external_data(keyword: str, use_all_plugins: bool = False):
+    """从多个数据源并发获取外部数据
+    :param keyword: 搜索关键词
+    :param use_all_plugins: 是否使用所有插件，False时只使用指定插件
+    """
     # 准备搜索任务
     search_tasks = []
+
+    # 指定插件列表
+    SPECIFIC_PLUGINS = [
+        'vde51', 'panws', 'pansearch',
+        'alipanx', 'rrdynb', 'xzys', 'hunhepan',
+        'qupansou', 'libvio', 'fox4k', 'yunso', 'vcsoso'
+    ]
 
     # 通过plugin_manager获取所有启用的搜索插件实例
     for name, plugin in plugin_manager.search_plugins.items():
         if not plugin['enabled']:
+            continue
+        # 如果不使用所有插件且当前插件不在指定列表中，则跳过
+        if not use_all_plugins and name not in SPECIFIC_PLUGINS:
+            print(f"{name}不在指定列表中")
             continue
         if name == 'aipan':
             # 特殊处理aipan的多个实例
@@ -285,7 +299,10 @@ async def proxy_middleware(request: Request, call_next):
             # 根据keyword决定是否获取外部数据
             tasks = [original_task]
             if keyword and keyword.endswith("#"):
+                tasks.append(fetch_external_data(keyword[:-1], True))
+            else:
                 tasks.append(fetch_external_data(keyword[:-1]))
+            
 
             results = await asyncio.gather(*tasks)
             original_response = results[0]
