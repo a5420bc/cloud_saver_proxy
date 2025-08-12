@@ -120,3 +120,31 @@ class BaseSearch(ABC):
         except Exception as e:
             print(f"resolve_json_chain 解析失败: {str(e)}")
             return None
+
+    def get_random_ua(self):
+        """生成随机User-Agent"""
+        import random
+        user_agents = [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/119.0",
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
+        ]
+        return random.choice(user_agents)
+
+    def generate_random_ip(self):
+        """生成随机IP地址"""
+        import random
+        # 生成随机的私有IP地址段
+        segments = [
+            [192, 168, random.randint(0, 255), random.randint(0, 255)],
+            [10, random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)],
+            [172, 16 + random.randint(0, 15), random.randint(0, 255), random.randint(0, 255)],
+        ]
+
+        segment = random.choice(segments)
+        return f"{segment[0]}.{segment[1]}.{segment[2]}.{segment[3]}"
