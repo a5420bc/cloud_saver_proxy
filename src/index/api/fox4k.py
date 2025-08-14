@@ -7,6 +7,7 @@ import random
 import time
 import logging
 from urllib.parse import urljoin, urlparse
+from requests.adapters import HTTPAdapter
 
 # 常量定义
 BASE_URL = "https://4kfox.com"
@@ -106,8 +107,16 @@ class Fox4kSearch(BaseSearch):
 
         if not selected_proxy and PROXY_ENABLED:
             logging.debug("🔧 [Fox4k DEBUG] 使用直连模式")
-
-        return requests.Session()
+        session = requests.Session()
+                # 配置适配器，增加连接池大小
+        adapter = HTTPAdapter(
+            pool_connections=20,  # 连接池中的连接数
+            pool_maxsize=50,      # 连接池最大连接数
+        )
+        
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+        return session
 
     def search(self, keyword):
         result, err = self.search_with_result(keyword)
