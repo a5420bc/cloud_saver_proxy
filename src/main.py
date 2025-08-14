@@ -144,6 +144,17 @@ TARGET_SERVICE = config["target_service"]
 INTERCEPT_PATHS = config["intercept_paths"]
 
 
+# 插件搜索超时时间（秒）
+PLUGIN_SEARCH_TIMEOUT = 10
+
+def create_search_task(search_func, use_all_plugins):
+    """创建搜索任务，非全量模式下应用超时"""
+    task = asyncio.to_thread(search_func)
+    if not use_all_plugins:
+        # 非全量模式设置超时
+        task = asyncio.wait_for(task, timeout=PLUGIN_SEARCH_TIMEOUT)
+    return task
+
 async def fetch_external_data(keyword: str, use_all_plugins: bool = False):
     """从多个数据源并发获取外部数据
     :param keyword: 搜索关键词
@@ -169,21 +180,20 @@ async def fetch_external_data(keyword: str, use_all_plugins: bool = False):
             continue
         if name == 'aipan':
             # 特殊处理aipan的多个实例
-            search_tasks.extend(
-                asyncio.to_thread(
-                    lambda s=search, n=name: (
-                        f"{n}_{s.source_id}", time.time(), s.search(keyword))
+            for search in plugin_manager.plugin_instances[name]:
+                search_tasks.append(
+                    create_search_task(
+                        lambda s=search, n=name: (f"{n}_{s.source_id}", time.time(), s.search(keyword)),
+                        use_all_plugins
+                    )
                 )
-                for search in plugin_manager.plugin_instances[name]
-            )
-            pass
         else:
             search_inst = plugin_manager.plugin_instances.get(name)
             if search_inst:
                 search_tasks.append(
-                    asyncio.to_thread(
-                        lambda s=search_inst, n=name: (
-                            n, time.time(), s.search(keyword))
+                    create_search_task(
+                        lambda s=search_inst, n=name: (n, time.time(), s.search(keyword)),
+                        use_all_plugins
                     )
                 )
 
@@ -196,7 +206,10 @@ async def fetch_external_data(keyword: str, use_all_plugins: bool = False):
 
     for result in search_results:
         if isinstance(result, Exception):
-            logger.error(f"搜索任务失败: {str(result)}")
+            if isinstance(result, asyncio.TimeoutError):
+                logger.warning(f"搜索任务超时: {str(result)}")
+            else:
+                logger.error(f"搜索任务失败: {str(result)}")
             continue
         if not result or not isinstance(result, tuple) or len(result) != 3:
             continue
