@@ -64,7 +64,7 @@ class QuPanSouSearch(BaseSearch):
                 "searchtext": keyword,
             },
             "page": {
-                "pageSize": 1000,
+                "pageSize": 20,
                 "pageIndex": 1,
             },
             "order": {
@@ -78,7 +78,7 @@ class QuPanSouSearch(BaseSearch):
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
             "Referer": "https://pan.funletu.com/",
         }
-        resp = requests.post(self.API_URL, headers=headers, json=req_body, timeout=6)
+        resp = requests.post(self.API_URL, headers=headers, json=req_body, timeout=15)
         resp.raise_for_status()
         data = resp.json()
         if data.get("status") != 200:
