@@ -10,6 +10,7 @@ from typing import List, Dict, Any, Optional
 from threading import Lock, RLock
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urlparse
+from requests.adapters import HTTPAdapter
 
 class PanyqSearch(BaseSearch):
     """盘友圈搜索实现"""
@@ -49,7 +50,18 @@ class PanyqSearch(BaseSearch):
     
     def _create_http_client(self):
         """创建HTTP客户端"""
+        
         session = requests.Session()
+        
+        # 配置适配器，增加连接池大小
+        adapter = HTTPAdapter(
+            pool_connections=20,  # 连接池中的连接数
+            pool_maxsize=50,      # 连接池最大连接数
+        )
+        
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+        
         # session.verify = False  # 忽略HTTPS证书验证
         session.timeout = self.DEFAULT_TIMEOUT
         return session
