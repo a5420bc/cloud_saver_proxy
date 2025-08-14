@@ -44,8 +44,7 @@ class LibvioSearch(BaseSearch):
         return None
 
     def _test_domain(self, domain: str, keyword: str) -> bool:
-        search_path = f"/search/-------------.html?wd={urllib.parse.quote(keyword)}&submit="
-        test_url = domain + search_path
+        test_url = domain
         try:
             resp = requests.get(test_url, timeout=8)
             if resp.status_code == 403:
