@@ -14,6 +14,7 @@ from httpx import Timeout
 from index.base import BaseSearch
 import time
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 # 配置日志
 logging.basicConfig(
@@ -121,6 +122,14 @@ plugin_manager = PluginManager()
 disabled_plugins = config.get("disabled_plugins", [])
 plugin_manager.discover_plugins(disabled_plugins)
 
+# 设置自定义线程池大小（例如设置为32个线程）
+CUSTOM_THREAD_POOL_SIZE = 32
+thread_pool_executor = ThreadPoolExecutor(max_workers=CUSTOM_THREAD_POOL_SIZE)
+
+# 获取事件循环并设置默认执行器
+loop = asyncio.get_event_loop()
+loop.set_default_executor(thread_pool_executor)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -146,6 +155,7 @@ INTERCEPT_PATHS = config["intercept_paths"]
 
 # 插件搜索超时时间（秒）
 PLUGIN_SEARCH_TIMEOUT = 10
+PLUGIN_SEARCH_TIMEOUT_MAX = 23
 
 def create_search_task(search_func, use_all_plugins):
     """创建搜索任务，非全量模式下应用超时"""
@@ -153,6 +163,8 @@ def create_search_task(search_func, use_all_plugins):
     if not use_all_plugins:
         # 非全量模式设置超时
         task = asyncio.wait_for(task, timeout=PLUGIN_SEARCH_TIMEOUT)
+    else:
+        task = asyncio.wait_for(task, timeout=PLUGIN_SEARCH_TIMEOUT_MAX)
     return task
 
 async def fetch_external_data(keyword: str, use_all_plugins: bool = False):
@@ -170,46 +182,52 @@ async def fetch_external_data(keyword: str, use_all_plugins: bool = False):
         'qupansou', 'libvio', 'fox4k', 'yunso', 'vcsoso'
     ]
 
+    # 重新组织任务执行，以便在超时时能获取到接口名称
+    valid_results = []
+    time_records = []
+    
+    # 重新创建带名称的任务列表
+    named_tasks = []
+    task_names = []
+    
     # 通过plugin_manager获取所有启用的搜索插件实例
     for name, plugin in plugin_manager.search_plugins.items():
         if not plugin['enabled']:
             continue
         # 如果不使用所有插件且当前插件不在指定列表中，则跳过
         if not use_all_plugins and name not in SPECIFIC_PLUGINS:
-            print(f"{name}不在指定列表中")
             continue
         if name == 'aipan':
             # 特殊处理aipan的多个实例
             for search in plugin_manager.plugin_instances[name]:
-                search_tasks.append(
-                    create_search_task(
-                        lambda s=search, n=name: (f"{n}_{s.source_id}", time.time(), s.search(keyword)),
-                        use_all_plugins
-                    )
+                instance_name = f"{name}_{search.source_id}"
+                task = create_search_task(
+                    lambda s=search, n=instance_name: (n, time.time(), s.search(keyword)),
+                    use_all_plugins
                 )
+                named_tasks.append(task)
+                task_names.append(instance_name)
         else:
             search_inst = plugin_manager.plugin_instances.get(name)
             if search_inst:
-                search_tasks.append(
-                    create_search_task(
-                        lambda s=search_inst, n=name: (n, time.time(), s.search(keyword)),
-                        use_all_plugins
-                    )
+                task = create_search_task(
+                    lambda s=search_inst, n=name: (n, time.time(), s.search(keyword)),
+                    use_all_plugins
                 )
-
+                named_tasks.append(task)
+                task_names.append(name)
+    
     # 执行并发搜索
-    search_results = await asyncio.gather(*search_tasks, return_exceptions=True)
-
-    # 过滤有效结果并记录耗时
-    valid_results = []
-    time_records = []
-
-    for result in search_results:
+    search_results = await asyncio.gather(*named_tasks, return_exceptions=True)
+    
+    # 处理结果
+    for i, result in enumerate(search_results):
+        plugin_name = task_names[i] if i < len(task_names) else "Unknown"
         if isinstance(result, Exception):
             if isinstance(result, asyncio.TimeoutError):
-                logger.warning(f"搜索任务超时: {str(result)}")
+                logger.warning(f"搜索任务超时 [{plugin_name}]: {str(result)}")
             else:
-                logger.error(f"搜索任务失败: {str(result)}")
+                logger.error(f"搜索任务失败 [{plugin_name}]: {str(result)}")
             continue
         if not result or not isinstance(result, tuple) or len(result) != 3:
             continue
@@ -220,7 +238,6 @@ async def fetch_external_data(keyword: str, use_all_plugins: bool = False):
         elapsed = time.time() - start_time
         time_records.append((name, elapsed))
         logger.debug(f"接口[{name}] 耗时: {elapsed:.3f}秒")
-
     # 输出统计信息
     if time_records:
         names, times = zip(*time_records)
