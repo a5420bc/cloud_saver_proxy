@@ -180,7 +180,7 @@ async def fetch_external_data(keyword: str, use_all_plugins: bool = False):
         'vde51', 'panws', 'pansearch',
         'alipanx', 'rrdynb', 'xzys', 'hunhepan',
         'qupansou', 'libvio', 'fox4k', 'yunso', 'vcsoso',
-        'slowread',
+        'slowread', 'kuafuzys'
     ]
 
     # 重新组织任务执行，以便在超时时能获取到接口名称
