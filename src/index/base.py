@@ -36,6 +36,8 @@ class BaseSearch(ABC):
             return "yidong"
         elif 'drive.uc.cn' in url:
             return "uc"
+        elif 'xunlei' in url:
+            return "xunlei"
         return ""
 
     def _clean_html(self, text):
